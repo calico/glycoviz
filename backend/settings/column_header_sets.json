@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Byonic",
+    "glycan_composition": "Glycan Composition",
+    "protein_accessions": "Protein Accessions",
+    "position_in_protein": "Position in Protein",
+    "master_protein_descriptions": "Master Protein Descriptions",
+    "sequence": "Sequence",
+    "modifications": "Modifications (all possible sites)",
+    "modifications_fallback": "Modifications",
+    "retention_time": "Top Apex RT [min]",
+    "fdr_prefix": "FDR 2D (by Search Engine)",
+    "engine_score_prefix": "Byonic Score (",
+    "ppm_prefix": "DeltaM [ppm] ",
+    "abundance_columns": "Abundances (Grouped)*"
+  },
+  {
+    "name": "MSFragger",
+    "glycan_composition": "",
+    "protein_accessions": "Protein",
+    "position_in_protein": "Protein Start",
+    "master_protein_descriptions": "Protein Description",
+    "sequence": "Peptide",
+    "modifications": "Assigned Modifications",
+    "modifications_fallback": "",
+    "retention_time": "Retention",
+    "fdr_prefix": "Probability",
+    "engine_score_prefix": "Hyperscore",
+    "ppm_prefix": "",
+    "abundance_columns": "Intensity"
+  },
+  {
+    "name": "Customized",
+    "glycan_composition": "",
+    "protein_accessions": "Protein",
+    "position_in_protein": "Start",
+    "master_protein_descriptions": "Entry Name",
+    "sequence": "Peptide Sequence",
+    "modifications": "Assigned Modifications",
+    "modifications_fallback": "Modifications",
+    "retention_time": "nistmab1_1 Apex Retention Time",
+    "fdr_prefix": "",
+    "engine_score_prefix": "",
+    "ppm_prefix": "",
+    "abundance_columns": "*_1 Intensity"
+  }
+]

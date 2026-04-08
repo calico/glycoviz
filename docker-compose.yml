@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: glycan
+      POSTGRES_PASSWORD: glycan
+      POSTGRES_DB: glycan_analysis
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      GLYCAN_DATABASE_URL: postgresql+asyncpg://glycan:glycan@db:5432/glycan_analysis
+      GLYCAN_CORS_ORIGINS: '["http://localhost:5173"]'
+      GLYCAN_DEBUG: "true"
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+      - ./backend/fasta:/app/fasta
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_TARGET: "http://backend:8000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
