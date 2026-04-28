@@ -24,7 +24,7 @@ import {
 
 // ── Filter-controls defaults ────────────────────────────────────────────────
 const DEFAULT_FDR = 0.01;
-const DEFAULT_BYONIC = 150;
+const DEFAULT_BYONIC = 10;
 const DEFAULT_PPM = 10;
 const DEFAULT_PEPTIDE_LEN = 7;
 const DEFAULT_MIN_COUNT = 1;

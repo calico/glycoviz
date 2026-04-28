@@ -1,6 +1,7 @@
 # GlycoViz #
 
 Glycan analysis application with build-in glycan validation algorithm  using React + FastAPI + PostgreSQL.
+![img.png](img.png)
 
 # User Guide #
 Please find the user guide under the root folder. 
