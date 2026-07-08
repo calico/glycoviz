@@ -173,13 +173,22 @@ export function useProteinAbundance(
   accession: string | null,
   site: string | null,
   params: { mode: string; metric: string },
+  weights?: { w_depth: number; w_conflict: number; w_byonic: number },
 ) {
   return useQuery<ProteinAbundanceBySequence>({
-    queryKey: ["analysis", id, "protein-abundance", accession, site, params],
+    queryKey: [
+      "analysis",
+      id,
+      "protein-abundance",
+      accession,
+      site,
+      params,
+      weights,
+    ],
     queryFn: () =>
       api
         .get(`/analysis/${id}/protein/${accession}/abundance`, {
-          params: { ...params, ...(site ? { site } : {}) },
+          params: { ...params, ...(site ? { site } : {}), ...weights },
         })
         .then((r) => r.data),
     enabled: !!id && !!accession,
@@ -190,12 +199,17 @@ export function useMultiSiteAbundance(
   id: string,
   sites: { accession: string; site: string }[],
   params: { mode: string; metric: string },
+  weights?: { w_depth: number; w_conflict: number; w_byonic: number },
 ) {
   return useQuery<AbundanceData>({
-    queryKey: ["analysis", id, "multi-site-abundance", sites, params],
+    queryKey: ["analysis", id, "multi-site-abundance", sites, params, weights],
     queryFn: () =>
       api
-        .post(`/analysis/${id}/multi-site-abundance`, { sites }, { params })
+        .post(
+          `/analysis/${id}/multi-site-abundance`,
+          { sites },
+          { params: { ...params, ...weights } },
+        )
         .then((r) => r.data),
     enabled: !!id && sites.length > 0,
   });

@@ -1427,11 +1427,15 @@ def compute_composite_validation_score(
         conflict_pct_out.loc[idx] = format(c, ".4f")
         engine_pct_out.loc[idx] = format(b, ".4f")
 
-        # Re-normalize weights if Byonic is unavailable
+        # Normalize weights so composite stays in [0, 1]
         if byonic_col is None:
             comp = (d + c) / 2.0
         else:
-            comp = w_depth * d + w_conflict * c + w_byonic * b
+            w_sum = w_depth + w_conflict + w_byonic
+            if w_sum > 0:
+                comp = (w_depth * d + w_conflict * c + w_byonic * b) / w_sum
+            else:
+                comp = 0.0
 
         composite.loc[idx] = format(comp, ".4f")
 
