@@ -12,6 +12,7 @@ export function AppLayout() {
             >
               GlycoViz
               <img src="/logo.png" alt="GlycoViz logo" className="h-8" />
+              <span className="text-xs font-normal text-gray-400">v{__APP_VERSION__}</span>
             </Link>
             <div className="flex gap-6">
               <Link to="/" className="text-gray-600 hover:text-gray-900">
