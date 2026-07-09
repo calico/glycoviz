@@ -1,11 +1,13 @@
+import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { version } from './package.json'
+
+const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'))
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(version),
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [react(), tailwindcss()],
   server: {

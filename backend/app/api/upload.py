@@ -8,9 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from app.config import settings
 from app.core.excel_reader import (
     build_header_remap,
-    ensure_glycan_composition,
-    ensure_placeholder_columns,
-    normalize_to_xlsx,
+    normalize_to_csv,
     read_abundance_columns,
     read_all_headers,
 )
@@ -124,8 +122,7 @@ async def upload_data_file(
 
     1. Save the raw file and read its original headers (for frontend matching).
     2. Match headers against saved header sets to build a remap dict.
-    3. For non-xlsx files **or** when header changes are needed, produce a
-       normalized ``.xlsx`` with canonical Byonic column names and
+    3. Normalize to CSV with canonical Byonic column names and
        ``"Abundances (Grouped): "`` prefixed abundance columns.
     4. Return the abundance column list and the original raw headers.
     """
@@ -144,48 +141,36 @@ async def upload_data_file(
     # 2) Match against header sets to get unified remap dict
     header_remap, matched_hs = _match_header_set(all_headers)
 
-    # 3) Normalize: remap headers + convert to xlsx if needed
-    xlsx_dest = dest.with_suffix(".xlsx")
-    needs_format_conversion = suffix != ".xlsx" or header_remap
+    # 3) Normalize: remap headers + convert to csv
+    csv_dest = dest.with_suffix(".csv")
+    needs_conversion = suffix != ".csv" or header_remap
 
     try:
-        if needs_format_conversion or header_remap:
-            did_change = normalize_to_xlsx(
+        if needs_conversion or header_remap:
+            did_change = normalize_to_csv(
                 str(dest),
-                str(xlsx_dest),
+                str(csv_dest),
                 header_remap=header_remap,
             )
-            if needs_format_conversion:
+            if needs_conversion:
                 dest.unlink(missing_ok=True)
-                dest = xlsx_dest
+                dest = csv_dest
             elif did_change:
-                # xlsx that changed — replace original with normalized version
                 dest.unlink(missing_ok=True)
-                xlsx_dest.rename(dest)
+                csv_dest.rename(dest)
             else:
-                # xlsx with no changes — clean up temp file
-                xlsx_dest.unlink(missing_ok=True)
+                csv_dest.unlink(missing_ok=True)
     except Exception as exc:
         dest.unlink(missing_ok=True)
-        xlsx_dest.unlink(missing_ok=True)
+        csv_dest.unlink(missing_ok=True)
         raise HTTPException(
             status_code=400,
             detail=f"Failed to normalize file: {exc}",
         )
 
-    # 3b) If "Glycan Composition" is missing, synthesize from "Assigned Modifications"
-    try:
-        ensure_glycan_composition(str(dest))
-    except Exception:
-        pass  # best-effort; file may lack "Assigned Modifications" too
-
-    # 3c) Add placeholder columns (PPM, Position in Protein) if missing
-    try:
-        ensure_placeholder_columns(str(dest))
-    except Exception:
-        pass
-
-    # 3d) Validate: at least one of Glycan Composition or Modifications must exist
+    # 3b) Validate: at least one of Glycan Composition or Modifications must exist
+    # Note: ensure_glycan_composition and ensure_placeholder_columns are
+    # deferred to analysis time (run_analysis) to keep uploads fast.
     final_headers = read_all_headers(str(dest))
     final_set = set(final_headers)
     has_glycan = "Glycan Composition" in final_set

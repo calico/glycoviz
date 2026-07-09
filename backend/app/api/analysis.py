@@ -60,6 +60,17 @@ async def run_analysis(params: AnalysisCreate, db: AsyncSession = Depends(get_db
     # Build the conditions list from the conditions dict (column_name -> condition_label)
     conditions = list(params.conditions.values())
 
+    # Ensure required columns exist before running analysis
+    from app.core.excel_reader import ensure_glycan_composition, ensure_placeholder_columns
+    try:
+        ensure_glycan_composition(filepath)
+    except Exception:
+        pass
+    try:
+        ensure_placeholder_columns(filepath)
+    except Exception:
+        pass
+
     # Run the core analysis (CPU-bound, but kept simple for now)
     try:
         result = core_run_analysis(filepath, filters, conditions)

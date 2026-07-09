@@ -27,7 +27,9 @@ __all__ = [
     "read_abundance_columns",
     "read_all_headers",
     "build_header_remap",
+    "normalize_to_csv",
     "normalize_to_xlsx",
+    "ensure_glycan_composition",
     "ensure_placeholder_columns",
 ]
 
@@ -121,7 +123,7 @@ def read_abundance_columns(
         return _read_abundance_from_xls(filepath, prefixes)
     if ext in {".tsv", ".csv"}:
         delimiter = "\t" if ext == ".tsv" else ","
-        return _read_abundance_from_delimited(filepath, delimiter=delimiter)
+        return _read_abundance_from_delimited(filepath, delimiter=delimiter, prefixes=prefixes)
 
     raise ValueError(
         f"Unsupported file type '{ext}'. Expected one of: .xlsx, .xls, .tsv, .csv"
@@ -133,16 +135,13 @@ def read_all_headers(filepath: str) -> list[str]:
     ext = Path(filepath).suffix.lower()
 
     if ext == ".xlsx":
-        wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
-        ws = wb.active
-        if ws is None:
-            wb.close()
+        from python_calamine import CalamineWorkbook
+        wb = CalamineWorkbook.from_path(filepath)
+        sheet = wb.get_sheet_by_index(0)
+        data = sheet.to_python(skip_empty_area=False)
+        if not data:
             return []
-        headers = [
-            str(cell.value or "") for cell in next(ws.iter_rows(min_row=1, max_row=1))
-        ]
-        wb.close()
-        return headers
+        return [str(cell) if cell is not None else "" for cell in data[0]]
 
     if ext == ".xls":
         import xlrd  # type: ignore[import-untyped]
@@ -195,14 +194,11 @@ def normalize_to_xlsx(
     rows: list[list[object]] = []
 
     if ext == ".xlsx":
-        wb_in = openpyxl.load_workbook(src_path, data_only=True)
-        ws_in = wb_in.active
-        if ws_in is None:
-            wb_in.close()
-            return False
-        for row in ws_in.iter_rows(values_only=True):
+        from python_calamine import CalamineWorkbook
+        wb = CalamineWorkbook.from_path(src_path)
+        sheet = wb.get_sheet_by_index(0)
+        for row in sheet.to_python(skip_empty_area=False):
             rows.append([cell if cell is not None else "" for cell in row])
-        wb_in.close()
 
     elif ext == ".xls":
         import xlrd  # type: ignore[import-untyped]
@@ -270,10 +266,109 @@ def normalize_to_xlsx(
     return True
 
 
+def normalize_to_csv(
+    src_path: str,
+    dest_path: str,
+    header_remap: dict[str, str | None] | None = None,
+) -> bool:
+    """Read any tabular file, apply header remapping, and write as ``.csv``.
+
+    This is the universal file normalizer.  It handles ``.xlsx``, ``.xls``,
+    ``.tsv``, ``.csv``, and ``.txt`` files.  After normalization, every file
+    has canonical Byonic header names in CSV format.
+
+    Parameters
+    ----------
+    src_path:
+        Path to the source file (any supported tabular format).
+    dest_path:
+        Destination ``.csv`` path.
+    header_remap:
+        Unified mapping from source column names to canonical names.
+        Entries mapped to ``None`` cause the column to be **removed**.
+
+    Returns
+    -------
+    bool
+        ``True`` if any header was changed or columns removed,
+        ``False`` otherwise.
+    """
+    remap = header_remap or {}
+    ext = Path(src_path).suffix.lower()
+
+    # --- read rows ----------------------------------------------------------
+    rows: list[list[object]] = []
+
+    if ext == ".xlsx":
+        from python_calamine import CalamineWorkbook
+        wb = CalamineWorkbook.from_path(src_path)
+        sheet = wb.get_sheet_by_index(0)
+        for row in sheet.to_python(skip_empty_area=False):
+            rows.append([cell if cell is not None else "" for cell in row])
+
+    elif ext == ".xls":
+        import xlrd  # type: ignore[import-untyped]
+
+        wb_xls = xlrd.open_workbook(src_path)
+        sheet = wb_xls.sheet_by_index(0)
+        for r in range(sheet.nrows):
+            rows.append(sheet.row_values(r))
+
+    elif ext in {".tsv", ".csv", ".txt"}:
+        delimiter = "\t" if ext in {".tsv", ".txt"} else ","
+        with open(src_path, newline="", encoding="utf-8") as fh:
+            reader = csv.reader(fh, delimiter=delimiter, quotechar='"')
+            for raw_row in reader:
+                rows.append(list(raw_row))
+    else:
+        raise ValueError(f"Unsupported file type '{ext}'")
+
+    if not rows:
+        return False
+
+    # --- remap headers ------------------------------------------------------
+    raw_headers = [str(h) for h in rows[0]]
+    mapped_headers = list(raw_headers)
+    changed = False
+
+    # Identify columns to remove (mapped to None) and columns to rename
+    indices_to_remove: list[int] = []
+    for i, name in enumerate(raw_headers):
+        if name in remap:
+            target = remap[name]
+            if target is None:
+                indices_to_remove.append(i)
+                changed = True
+            else:
+                mapped_headers[i] = target
+                changed = True
+
+    # Remove columns marked for deletion (reverse order to preserve indices)
+    if indices_to_remove:
+        for row in rows:
+            for idx in reversed(indices_to_remove):
+                if idx < len(row):
+                    row.pop(idx)
+        for idx in reversed(indices_to_remove):
+            if idx < len(mapped_headers):
+                mapped_headers.pop(idx)
+
+    if not changed and ext == ".csv":
+        # No changes needed and already csv — skip rewriting
+        return False
+
+    # --- write csv ----------------------------------------------------------
+    rows[0] = mapped_headers
+    with open(dest_path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerows(rows)
+    return True
+
+
 def ensure_glycan_composition(filepath: str) -> bool:
     """Add a ``Glycan Composition`` column if the file lacks one.
 
-    Reads the ``.xlsx`` at *filepath*.  If the header row already contains
+    Reads the CSV at *filepath*.  If the header row already contains
     ``"Glycan Composition"`` the file is left untouched and ``False`` is
     returned.
 
@@ -286,18 +381,9 @@ def ensure_glycan_composition(filepath: str) -> bool:
     """
     from app.core.mass_converter import MassConverter  # type: ignore[import-untyped]
 
-    wb = openpyxl.load_workbook(filepath)
-    ws = wb.active
-    if ws is None:
-        wb.close()
-        return False
-
-    headers = [
-        str(cell.value or "") for cell in next(ws.iter_rows(min_row=1, max_row=1))
-    ]
+    headers = read_all_headers(filepath)
 
     if "Glycan Composition" in headers:
-        wb.close()
         return False
 
     # Find the modifications column (may have been remapped)
@@ -308,7 +394,6 @@ def ensure_glycan_composition(filepath: str) -> bool:
             break
 
     if mods_col_name is None:
-        wb.close()
         return False
 
     idx_mods = headers.index(mods_col_name)
@@ -320,21 +405,27 @@ def ensure_glycan_composition(filepath: str) -> bool:
     )
     mass_converter = MassConverter(mass_file)
 
-    new_col = len(headers) + 1
-    ws.cell(row=1, column=new_col, value="Glycan Composition")
-
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        glycan_comp = ""
-        try:
-            mods_val = str(row[idx_mods] or "")
-            if mods_val:
-                glycan_comp = mass_converter.get_glycan_comp(mods_val)
-        except Exception:
+    # Read all rows, append new column, write back
+    rows: list[list[str]] = []
+    with open(filepath, newline="", encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        header_row = next(reader)
+        header_row.append("Glycan Composition")
+        rows.append(header_row)
+        for row in reader:
             glycan_comp = ""
-        ws.cell(row=row_idx, column=new_col, value=glycan_comp)
+            try:
+                mods_val = row[idx_mods] if idx_mods < len(row) else ""
+                if mods_val:
+                    glycan_comp = mass_converter.get_glycan_comp(mods_val)
+            except Exception:
+                glycan_comp = ""
+            row.append(glycan_comp)
+            rows.append(row)
 
-    wb.save(filepath)
-    wb.close()
+    with open(filepath, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerows(rows)
     return True
 
 
@@ -350,7 +441,7 @@ _PLACEHOLDER_COLUMNS: list[tuple[str, object]] = [
 
 
 def ensure_placeholder_columns(filepath: str) -> bool:
-    """Add missing placeholder columns to the ``.xlsx`` at *filepath*.
+    """Add missing placeholder columns to the CSV at *filepath*.
 
     For each entry in ``_PLACEHOLDER_COLUMNS``, if the header is not already
     present (exact match or prefix match), a new column is appended with the
@@ -358,15 +449,7 @@ def ensure_placeholder_columns(filepath: str) -> bool:
 
     Returns ``True`` when at least one column was added, ``False`` otherwise.
     """
-    wb = openpyxl.load_workbook(filepath)
-    ws = wb.active
-    if ws is None:
-        wb.close()
-        return False
-
-    headers = [
-        str(cell.value or "") for cell in next(ws.iter_rows(min_row=1, max_row=1))
-    ]
+    headers = read_all_headers(filepath)
 
     to_add: list[tuple[str, object]] = []
     for col_name, default_val in _PLACEHOLDER_COLUMNS:
@@ -376,19 +459,24 @@ def ensure_placeholder_columns(filepath: str) -> bool:
             to_add.append((col_name, default_val))
 
     if not to_add:
-        wb.close()
         return False
 
-    n_rows = ws.max_row or 1
-    for col_name, default_val in to_add:
-        new_col = len(headers) + 1
-        ws.cell(row=1, column=new_col, value=col_name)
-        for row_idx in range(2, n_rows + 1):
-            ws.cell(row=row_idx, column=new_col, value=default_val)
-        headers.append(col_name)
+    # Read all rows, append new columns, write back
+    rows: list[list[str]] = []
+    with open(filepath, newline="", encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        header_row = next(reader)
+        for col_name, _ in to_add:
+            header_row.append(col_name)
+        rows.append(header_row)
+        for row in reader:
+            for _, default_val in to_add:
+                row.append(str(default_val))
+            rows.append(row)
 
-    wb.save(filepath)
-    wb.close()
+    with open(filepath, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerows(rows)
     return True
 
 
@@ -398,24 +486,13 @@ def ensure_placeholder_columns(filepath: str) -> bool:
 
 
 def _read_abundance_from_xlsx(filepath: str, prefixes: list[str]) -> list[str]:
-    """Extract abundance columns from an ``.xlsx`` file using *openpyxl*."""
-    wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
-    try:
-        ws = wb.active
-        if ws is None:
-            return []
-        first_row: tuple[object, ...] = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())  # type: ignore[arg-type]
-        for prefix in prefixes:
-            cols = [
-                str(cell)
-                for cell in first_row
-                if cell is not None and str(cell).startswith(prefix)
-            ]
-            if cols:
-                return cols
-        return []
-    finally:
-        wb.close()
+    """Extract abundance columns from an ``.xlsx`` file."""
+    headers = read_all_headers(filepath)
+    for prefix in prefixes:
+        cols = [name for name in headers if name.startswith(prefix)]
+        if cols:
+            return cols
+    return []
 
 
 def _read_abundance_from_xls(filepath: str, prefixes: list[str]) -> list[str]:
@@ -433,7 +510,9 @@ def _read_abundance_from_xls(filepath: str, prefixes: list[str]) -> list[str]:
     return []
 
 
-def _read_abundance_from_delimited(filepath: str, *, delimiter: str) -> list[str]:
+def _read_abundance_from_delimited(
+    filepath: str, *, delimiter: str, prefixes: list[str] | None = None,
+) -> list[str]:
     """Extract abundance columns from a TSV or CSV file."""
     with open(filepath, newline="", encoding="utf-8") as fh:
         reader = csv.reader(fh, delimiter=delimiter, quotechar='"')
@@ -442,4 +521,11 @@ def _read_abundance_from_delimited(filepath: str, *, delimiter: str) -> list[str
     if headers is None:
         return []
 
+    # Try prefix matching first (works for all formats including converted xlsx)
+    for prefix in (prefixes or [_ABUNDANCE_PREFIX]):
+        cols = [name for name in headers if name.startswith(prefix)]
+        if cols:
+            return cols
+
+    # Fall back to suffix matching (MSFragger convention)
     return [name for name in headers if name.endswith(" Intensity")]
