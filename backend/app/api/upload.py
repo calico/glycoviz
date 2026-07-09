@@ -70,7 +70,7 @@ def _match_header_set(all_headers: list[str]):
                 else:
                     # Prefix match: "Abundances (Grouped)*" → startswith(...)
                     match_mode = "prefix"
-                    match_value = abundance_pattern.rstrip("*").rstrip()
+                    match_value = abundance_pattern.rstrip("*")
 
                 source_is_canonical = match_value == "Abundances (Grouped)"
 

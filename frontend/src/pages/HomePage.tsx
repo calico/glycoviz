@@ -231,7 +231,7 @@ export function HomePage() {
               const suffix = val.slice(1).trimStart();
               return allHeaders.some((h) => h.endsWith(suffix));
             } else {
-              const prefix = val.replace(/\*+$/, "").trimEnd();
+              const prefix = val.replace(/\*+$/, "");
               return allHeaders.some((h) => h.startsWith(prefix));
             }
           })();
