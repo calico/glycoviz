@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import api from "../api/client";
 import { useSearchParams } from "react-router-dom";
 import {
   useAnalysis,
@@ -75,6 +76,16 @@ export function ComparePage() {
   const [selA2, setSelA2] = useState(searchParams.get("a2") ?? "");
   const [selectedSite, setSelectedSite] = useState<SiteCompareRow | null>(null);
   const [showGlycans, setShowGlycans] = useState(false);
+  const [paramsModalData, setParamsModalData] = useState<Record<string, unknown> | null>(null);
+
+  const fetchAndShowParams = useCallback(async (analysisId: string) => {
+    try {
+      const resp = await api.get(`/analysis/${analysisId}/params`);
+      setParamsModalData(resp.data as Record<string, unknown>);
+    } catch {
+      setParamsModalData({ error: "Failed to load parameters." });
+    }
+  }, []);
 
   const id1 = searchParams.get("a1") ?? "";
   const id2 = searchParams.get("a2") ?? "";
@@ -106,11 +117,17 @@ export function ComparePage() {
   const qcRows = useMemo<QcRow[]>(() => {
     const qc1 = analysis1?.qc_stats;
     const qc2 = analysis2?.qc_stats;
-    return QC_LABELS.map(([key, label]) => ({
+    const rows: QcRow[] = QC_LABELS.map(([key, label]) => ({
       metric: label,
       analysis1: qc1?.[key] ?? "—",
       analysis2: qc2?.[key] ?? "—",
     }));
+    rows.push({
+      metric: "Parameters",
+      analysis1: "__params_link_1__",
+      analysis2: "__params_link_2__",
+    });
+    return rows;
   }, [analysis1, analysis2]);
 
   // Build global glycan comparison rows
@@ -172,8 +189,46 @@ export function ComparePage() {
   const namedQcColumns = useMemo<Column<QcRow>[]>(
     () =>
       qcColumns.map((col) => {
-        if (col.key === "analysis1") return { ...col, label: `#${id1}` };
-        if (col.key === "analysis2") return { ...col, label: `#${id2}` };
+        if (col.key === "analysis1")
+          return {
+            ...col,
+            label: `#${id1}`,
+            render: (v: QcRow[keyof QcRow]) =>
+              v === "__params_link_1__" ? (
+                <a
+                  href="#"
+                  className="text-blue-600 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    fetchAndShowParams(id1);
+                  }}
+                >
+                  View
+                </a>
+              ) : (
+                String(v ?? "")
+              ),
+          };
+        if (col.key === "analysis2")
+          return {
+            ...col,
+            label: `#${id2}`,
+            render: (v: QcRow[keyof QcRow]) =>
+              v === "__params_link_2__" ? (
+                <a
+                  href="#"
+                  className="text-blue-600 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    fetchAndShowParams(id2);
+                  }}
+                >
+                  View
+                </a>
+              ) : (
+                String(v ?? "")
+              ),
+          };
         return col;
       }),
     [id1, id2],
@@ -379,6 +434,48 @@ export function ComparePage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Parameter Modal */}
+      {paramsModalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setParamsModalData(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Analysis Parameters
+              </h3>
+              <button
+                type="button"
+                className="text-gray-400 hover:text-gray-600"
+                onClick={() => setParamsModalData(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-gray-100">
+                {Object.entries(paramsModalData).map(([key, value]) => (
+                  <tr key={key}>
+                    <td className="py-2 pr-4 font-medium text-gray-600 align-top">
+                      {key}
+                    </td>
+                    <td className="py-2 text-gray-800 break-all">
+                      {typeof value === "object" && value !== null
+                        ? JSON.stringify(value, null, 2)
+                        : String(value ?? "—")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
