@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FileUploadDropzone } from "../components/upload/FileUploadDropzone";
 import { DataTable, type Column } from "../components/tables/DataTable";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -1038,9 +1038,19 @@ export function HomePage() {
 
       {/* ─── Section 5: Saved Analyses Table ──────────────────────────────── */}
       <section className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">
-          Saved Analyses
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Saved Analyses
+          </h2>
+          {analysisRows.length >= 2 && (
+            <Link
+              to="/compare"
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              Compare Two Analyses
+            </Link>
+          )}
+        </div>
 
         {isLoadingAnalyses ? (
           <LoadingSpinner message="Loading analyses…" />
