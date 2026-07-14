@@ -13,14 +13,21 @@ interface UniProtFeature {
   featureId?: string;
 }
 
+function extractUniProtId(accession: string): string {
+  // "sp|P00738|HPT_HUMAN" → "P00738"
+  if (accession.includes("|")) return accession.split("|")[1];
+  return accession;
+}
+
 function useUniProtGlycanSites(accession: string) {
+  const uniprotId = extractUniProtId(accession);
   return useQuery<UniProtFeature[]>({
-    queryKey: ["uniprot-glycan", accession],
-    enabled: !!accession,
+    queryKey: ["uniprot-glycan", uniprotId],
+    enabled: !!uniprotId,
     staleTime: Infinity,
     queryFn: async () => {
       const res = await fetch(
-        `https://rest.uniprot.org/uniprotkb/search?query=accession:${encodeURIComponent(accession)}&fields=ft_carbohyd`,
+        `https://rest.uniprot.org/uniprotkb/search?query=accession:${encodeURIComponent(uniprotId)}&fields=ft_carbohyd`,
       );
       if (!res.ok) throw new Error(`UniProt API error: ${res.status}`);
       const json = await res.json();

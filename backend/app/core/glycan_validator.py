@@ -288,15 +288,21 @@ def pvalue_from_ttest(list1, list2):
     return twosample_results[1]
 
 
-def get_peplength_from_sequence(sequence):
-    # remove modifications in the sequence, for example, "PEPT[123]IDE" should be "PEPTIDE"
+def clean_sequence(sequence: str) -> str:
+    """Strip modifications and flanking residues from a peptide sequence.
+
+    Examples: ``"K.VVLHPN[+3229.168]YSQVDIGLIK.L"`` → ``"VVLHPNYSQVDIGLIK"``
+    """
     sequence = str(sequence)
     sequence = re.sub(r"\[.*?\]", "", sequence)
     sequence = re.sub(r"\(.*?\)", "", sequence)
-    # for P.PEPTIDE.K, should be PEPTIDE
     if len(sequence) > 3 and sequence[1] == "." and sequence[-2] == ".":
         sequence = sequence[2:-2]
-    return len(sequence)
+    return sequence
+
+
+def get_peplength_from_sequence(sequence):
+    return len(clean_sequence(sequence))
 
 
 def main1(parameterList, glycanColumnName="Glycan Composition"):
@@ -1284,7 +1290,7 @@ def get_predicted_rt_from_comp(compositionName: str) -> float:
 
 
 def get_key(row):
-    # add modification info
+    # Sequence is already cleaned in the results CSV
     k = (
         str(row.get("Sequence", ""))
         + "?"

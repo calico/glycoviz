@@ -142,27 +142,27 @@ async def upload_data_file(
     header_remap, matched_hs = _match_header_set(all_headers)
 
     # 3) Normalize: remap headers + convert to csv
-    csv_dest = dest.with_suffix(".csv")
-    needs_conversion = suffix != ".csv" or header_remap
+    if suffix == ".csv":
+        # Already CSV — normalize in-place if headers need remapping
+        csv_dest = dest
+    else:
+        csv_dest = dest.with_suffix(".csv")
 
     try:
-        if needs_conversion or header_remap:
+        if header_remap or suffix != ".csv":
             did_change = normalize_to_csv(
                 str(dest),
                 str(csv_dest),
                 header_remap=header_remap,
             )
-            if needs_conversion:
+            if csv_dest != dest:
+                # Converted from non-csv format — remove original
                 dest.unlink(missing_ok=True)
                 dest = csv_dest
-            elif did_change:
-                dest.unlink(missing_ok=True)
-                csv_dest.rename(dest)
-            else:
-                csv_dest.unlink(missing_ok=True)
     except Exception as exc:
         dest.unlink(missing_ok=True)
-        csv_dest.unlink(missing_ok=True)
+        if csv_dest != dest:
+            csv_dest.unlink(missing_ok=True)
         raise HTTPException(
             status_code=400,
             detail=f"Failed to normalize file: {exc}",
@@ -181,6 +181,13 @@ async def upload_data_file(
             status_code=400,
             detail='File must contain at least one of "Glycan Composition" or "Modifications" columns.',
         )
+
+    # 3c) Add dummy abundance column if none exists
+    from app.core.excel_reader import ensure_abundance_column
+    try:
+        ensure_abundance_column(str(dest))
+    except Exception:
+        pass
 
     # 4) Read abundance columns from the (possibly converted) file
     prefixes: list[str] | None = None

@@ -55,20 +55,32 @@ _CANONICAL_NAMES: dict[str, str] = {
 }
 
 
-def build_header_remap(header_set: "ColumnHeaderSet") -> dict[str, str]:
+def build_header_remap(header_set: "ColumnHeaderSet") -> dict[str, str | list[str]]:
     """Build a header remap dict from a :class:`ColumnHeaderSet`.
 
     For each field in ``_CANONICAL_NAMES``, if the header set's value differs
     from the canonical name (and is non-empty), add a mapping from the header
     set's value to the canonical name.
+
+    When the same source column maps to multiple canonical names (e.g.
+    ``protein_accessions`` and ``master_protein_descriptions`` both set to
+    ``"Protein Name"``), the value becomes a list of target names so the
+    column can be duplicated during normalization.
     """
     from app.schemas.analysis import ColumnHeaderSet  # noqa: F811 – deferred import
 
-    remap: dict[str, str] = {}
+    remap: dict[str, str | list[str]] = {}
     for field, canonical in _CANONICAL_NAMES.items():
         value = getattr(header_set, field, "")
         if value and value != canonical:
-            remap[value] = canonical
+            if value in remap:
+                existing = remap[value]
+                if isinstance(existing, list):
+                    existing.append(canonical)
+                else:
+                    remap[value] = [existing, canonical]
+            else:
+                remap[value] = canonical
     return remap
 
 
@@ -130,6 +142,11 @@ def read_abundance_columns(
     )
 
 
+def _normalize_header(val: str) -> str:
+    """Replace newlines and tabs in a header value with spaces, strip BOM."""
+    return val.replace("\ufeff", "").replace("\n", " ").replace("\r", " ").replace("\t", " ")
+
+
 def read_all_headers(filepath: str) -> list[str]:
     """Return every column header from the first row of *filepath*."""
     ext = Path(filepath).suffix.lower()
@@ -141,23 +158,26 @@ def read_all_headers(filepath: str) -> list[str]:
         data = sheet.to_python(skip_empty_area=False)
         if not data:
             return []
-        return [str(cell) if cell is not None else "" for cell in data[0]]
+        raw = [str(cell) if cell is not None else "" for cell in data[0]]
 
-    if ext == ".xls":
+    elif ext == ".xls":
         import xlrd  # type: ignore[import-untyped]
 
         book = xlrd.open_workbook(filepath)
         sheet = book.sheet_by_index(0)
-        return [str(sheet.cell_value(0, c)) for c in range(sheet.ncols)]
+        raw = [str(sheet.cell_value(0, c)) for c in range(sheet.ncols)]
 
-    if ext in {".tsv", ".csv"}:
+    elif ext in {".tsv", ".csv"}:
         delimiter = "\t" if ext == ".tsv" else ","
         with open(filepath, newline="", encoding="utf-8") as fh:
             reader = csv.reader(fh, delimiter=delimiter, quotechar='"')
             row = next(reader, None)
-        return list(row) if row else []
+        raw = list(row) if row else []
 
-    return []
+    else:
+        return []
+
+    return [_normalize_header(h) for h in raw]
 
 
 def normalize_to_xlsx(
@@ -221,17 +241,24 @@ def normalize_to_xlsx(
         return False
 
     # --- remap headers ------------------------------------------------------
-    raw_headers = [str(h) for h in rows[0]]
+    raw_headers = [_normalize_header(str(h)) for h in rows[0]]
     mapped_headers = list(raw_headers)
     changed = False
 
-    # Identify columns to remove (mapped to None) and columns to rename
+    # Identify columns to remove, rename, or duplicate
     indices_to_remove: list[int] = []
+    columns_to_duplicate: list[tuple[int, str]] = []  # (source_idx, new_name)
     for i, name in enumerate(raw_headers):
         if name in remap:
             target = remap[name]
             if target is None:
                 indices_to_remove.append(i)
+                changed = True
+            elif isinstance(target, list):
+                # First target renames in place, rest are duplicated
+                mapped_headers[i] = target[0]
+                for extra in target[1:]:
+                    columns_to_duplicate.append((i, extra))
                 changed = True
             else:
                 mapped_headers[i] = target
@@ -246,6 +273,14 @@ def normalize_to_xlsx(
         for idx in reversed(indices_to_remove):
             if idx < len(mapped_headers):
                 mapped_headers.pop(idx)
+
+    # Duplicate columns (append copies at the end)
+    if columns_to_duplicate:
+        for src_idx, new_name in columns_to_duplicate:
+            mapped_headers.append(new_name)
+            for row in rows[1:]:
+                row.append(row[src_idx] if src_idx < len(row) else "")
+        changed = True
 
     if not changed and ext == ".xlsx":
         # No changes needed and already xlsx — skip rewriting
@@ -327,17 +362,24 @@ def normalize_to_csv(
         return False
 
     # --- remap headers ------------------------------------------------------
-    raw_headers = [str(h) for h in rows[0]]
+    raw_headers = [_normalize_header(str(h)) for h in rows[0]]
     mapped_headers = list(raw_headers)
     changed = False
 
-    # Identify columns to remove (mapped to None) and columns to rename
+    # Identify columns to remove, rename, or duplicate
     indices_to_remove: list[int] = []
+    columns_to_duplicate: list[tuple[int, str]] = []  # (source_idx, new_name)
     for i, name in enumerate(raw_headers):
         if name in remap:
             target = remap[name]
             if target is None:
                 indices_to_remove.append(i)
+                changed = True
+            elif isinstance(target, list):
+                # First target renames in place, rest are duplicated
+                mapped_headers[i] = target[0]
+                for extra in target[1:]:
+                    columns_to_duplicate.append((i, extra))
                 changed = True
             else:
                 mapped_headers[i] = target
@@ -352,6 +394,14 @@ def normalize_to_csv(
         for idx in reversed(indices_to_remove):
             if idx < len(mapped_headers):
                 mapped_headers.pop(idx)
+
+    # Duplicate columns (append copies at the end)
+    if columns_to_duplicate:
+        for src_idx, new_name in columns_to_duplicate:
+            mapped_headers.append(new_name)
+            for row in rows[1:]:
+                row.append(row[src_idx] if src_idx < len(row) else "")
+        changed = True
 
     if not changed and ext == ".csv":
         # No changes needed and already csv — skip rewriting
@@ -472,6 +522,40 @@ def ensure_placeholder_columns(filepath: str) -> bool:
         for row in reader:
             for _, default_val in to_add:
                 row.append(str(default_val))
+            rows.append(row)
+
+    with open(filepath, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerows(rows)
+    return True
+
+
+def ensure_abundance_column(filepath: str) -> bool:
+    """Add a dummy abundance column if the file has none.
+
+    Checks for any column starting with ``"Abundances (Grouped): "`` or
+    ending with ``" Intensity"``.  If none is found, appends a single
+    ``"Abundances (Grouped): All"`` column with value ``1`` for every row.
+
+    Returns ``True`` when a column was added, ``False`` otherwise.
+    """
+    headers = read_all_headers(filepath)
+
+    has_abundance = any(
+        h.startswith(_ABUNDANCE_PREFIX) or h.endswith(" Intensity")
+        for h in headers
+    )
+    if has_abundance:
+        return False
+
+    rows: list[list[str]] = []
+    with open(filepath, newline="", encoding="utf-8") as fh:
+        reader = csv.reader(fh)
+        header_row = next(reader)
+        header_row.append(f"{_ABUNDANCE_PREFIX}All")
+        rows.append(header_row)
+        for row in reader:
+            row.append("1")
             rows.append(row)
 
     with open(filepath, "w", newline="", encoding="utf-8") as fh:

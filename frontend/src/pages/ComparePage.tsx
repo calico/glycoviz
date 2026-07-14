@@ -383,7 +383,7 @@ export function ComparePage() {
 
           {/* Glycosylation Sites + Per-site glycan detail (side by side) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_2fr]">
-            <section className="min-w-0 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="min-w-0 overflow-x-auto rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="mb-2 text-lg font-semibold text-gray-800">
                 Glycosylation Sites
               </h2>

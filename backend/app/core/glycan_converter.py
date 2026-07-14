@@ -54,7 +54,7 @@ __all__ = [
 
 from app.core.glycan_lookup import composition_to_mass
 
-from app.core.glycan_validator import get_peplength_from_sequence
+from app.core.glycan_validator import clean_sequence, get_peplength_from_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -269,9 +269,22 @@ def run_analysis(
             row_values = list(row)
             total_rows_scanned += 1
 
+            # --- clean sequence in-place (strip modifications and flanking residues)
+            if col_idx.peptide < len(row_values):
+                row_values[col_idx.peptide] = clean_sequence(
+                    str(row_values[col_idx.peptide])
+                )
+
+            # --- clean protein accession (keep first token, strip leading ">")
+            if col_idx.protein < len(row_values):
+                acc = str(row_values[col_idx.protein] or "").lstrip(">")
+                if " " in acc:
+                    acc = acc.split()[0]
+                row_values[col_idx.protein] = acc
+
             # --- apply QC filters ------------------------------------------
             try:
-                peplength_val = get_peplength_from_sequence(row_values[col_idx.peptide])
+                peplength_val = len(row_values[col_idx.peptide])
                 fdr2d_val = float(row_values[col_idx.fdr2d])
                 if filters.fdr_is_probability:
                     fdr2d_val = 1.0 - fdr2d_val

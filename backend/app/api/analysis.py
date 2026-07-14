@@ -61,13 +61,17 @@ async def run_analysis(params: AnalysisCreate, db: AsyncSession = Depends(get_db
     conditions = list(params.conditions.values())
 
     # Ensure required columns exist before running analysis
-    from app.core.excel_reader import ensure_glycan_composition, ensure_placeholder_columns
+    from app.core.excel_reader import ensure_glycan_composition, ensure_placeholder_columns, ensure_abundance_column
     try:
         ensure_glycan_composition(filepath)
     except Exception:
         pass
     try:
         ensure_placeholder_columns(filepath)
+    except Exception:
+        pass
+    try:
+        ensure_abundance_column(filepath)
     except Exception:
         pass
 
