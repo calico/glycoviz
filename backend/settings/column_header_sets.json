@@ -46,6 +46,21 @@
   },
   {
     "name": "Byonic-standalone",
+    "glycan_composition": "CompositionList",
+    "protein_accessions": "ProteinName",
+    "position_in_protein": "",
+    "master_protein_descriptions": "ProteinName",
+    "sequence": "Sequence",
+    "modifications": "VariableFinalModNameList",
+    "modifications_fallback": "Modifications",
+    "retention_time": "ScanTimeList",
+    "fdr_prefix": "PosteriorErrorProbability1_sum",
+    "engine_score_prefix": "Score",
+    "ppm_prefix": "MassErrPPM",
+    "abundance_columns": ""
+  },
+  {
+    "name": "Customized",
     "glycan_composition": "Glycans NHFAGNa",
     "protein_accessions": "Protein Name",
     "position_in_protein": "",
@@ -54,24 +69,9 @@
     "modifications": "Glycans NHFAGNa",
     "modifications_fallback": "Modifications",
     "retention_time": "Scan Time",
-    "fdr_prefix": "|Log Prob|",
+    "fdr_prefix": "",
     "engine_score_prefix": "Score",
     "ppm_prefix": "Mass error (ppm)",
     "abundance_columns": ""
-  },
-  {
-    "name": "Customized",
-    "glycan_composition": "",
-    "protein_accessions": "Protein",
-    "position_in_protein": "Start",
-    "master_protein_descriptions": "Entry Name",
-    "sequence": "Peptide Sequence",
-    "modifications": "Assigned Modifications",
-    "modifications_fallback": "Modifications",
-    "retention_time": "nistmab1_1 Apex Retention Time",
-    "fdr_prefix": "",
-    "engine_score_prefix": "",
-    "ppm_prefix": "",
-    "abundance_columns": "*_1 Intensity"
   }
 ]
