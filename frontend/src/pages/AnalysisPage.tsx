@@ -180,6 +180,21 @@ export function AnalysisPage() {
   const [displayType, setDisplayType] = useState<DisplayType>("absolute");
   const [refCondition, setRefCondition] = useState<string>("");
   const [compCondition, setCompCondition] = useState<string>("");
+
+  // ── Composite score weight overrides ─────────────────────────────────
+  const [wDepth, setWDepth] = useState<number>(0.4);
+  const [wConflict, setWConflict] = useState<number>(0.4);
+  const [wByonic, setWByonic] = useState<number>(0.2);
+
+  // Initialise weights from the analysis's saved params once loaded
+  useEffect(() => {
+    const fp = analysis?.filter_params as Record<string, unknown> | undefined;
+    if (fp) {
+      if (typeof fp.w_depth === "number") setWDepth(fp.w_depth);
+      if (typeof fp.w_conflict === "number") setWConflict(fp.w_conflict);
+      if (typeof fp.w_byonic === "number") setWByonic(fp.w_byonic);
+    }
+  }, [analysis?.filter_params]);
   const [selectedSite, setSelectedSite] = useState<SiteRow | null>(null);
   const [checkedSites, setCheckedSites] = useState<SiteRow[]>([]);
   const [showCheckedPlots, setShowCheckedPlots] = useState(false);
@@ -198,6 +213,11 @@ export function AnalysisPage() {
     [plotMode, valueType],
   );
 
+  const scoreWeights = useMemo(
+    () => ({ w_depth: wDepth, w_conflict: wConflict, w_byonic: wByonic }),
+    [wDepth, wConflict, wByonic],
+  );
+
   const { data: globalAbundance } = useAbundanceData(
     analysisId,
     abundanceParams,
@@ -208,6 +228,7 @@ export function AnalysisPage() {
     selectedSite?.accession ?? null,
     selectedSite?.site ?? null,
     abundanceParams,
+    scoreWeights,
   );
 
   // Sequence selector for per-protein plots
@@ -244,6 +265,7 @@ export function AnalysisPage() {
     analysisId,
     multiSiteQuerySites,
     abundanceParams,
+    scoreWeights,
   );
 
   // ── Fold change ─────────────────────────────────────────────────────────
@@ -634,9 +656,50 @@ export function AnalysisPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr]">
         {/* Left: Sites Table */}
         <div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
-            Glycosylation Sites
-          </h2>
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Glycosylation Sites
+            </h2>
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <span className="font-medium uppercase tracking-wider cursor-help" title="Composite validation score = D × Depth + RT × RT Conflict + ES × Engine Score. Set a weight to 0 to ignore that metric. Weights should sum to 1.">Weights</span>
+              <label className="flex items-center gap-0.5" title="Depth percentile weight">
+                <span>D</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={wDepth}
+                  onChange={(e) => setWDepth(Number(e.target.value))}
+                  className="w-11 rounded border border-gray-300 px-1 py-0.5 text-[11px] focus:border-blue-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex items-center gap-0.5" title="RT conflict percentile weight">
+                <span>RT</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={wConflict}
+                  onChange={(e) => setWConflict(Number(e.target.value))}
+                  className="w-11 rounded border border-gray-300 px-1 py-0.5 text-[11px] focus:border-blue-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex items-center gap-0.5" title="Engine score percentile weight">
+                <span>ES</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={wByonic}
+                  onChange={(e) => setWByonic(Number(e.target.value))}
+                  className="w-11 rounded border border-gray-300 px-1 py-0.5 text-[11px] focus:border-blue-500 focus:outline-none"
+                />
+              </label>
+            </div>
+          </div>
 
           {sitesLoading ? (
             <LoadingSpinner message="Loading sites…" />

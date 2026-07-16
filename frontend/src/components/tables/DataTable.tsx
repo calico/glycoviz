@@ -16,6 +16,8 @@ export interface DataTableProps<T> {
   selectable?: boolean;
   onSelectionChange?: (selected: T[]) => void;
   exportFilename?: string;
+  pageSize?: number;
+  highlightRow?: (row: T) => boolean;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -50,10 +52,15 @@ export function DataTable<T extends Record<string, unknown>>({
   selectable = false,
   onSelectionChange,
   exportFilename,
+  pageSize,
+  highlightRow,
 }: DataTableProps<T>) {
   // Sort state
   const [sortKey, setSortKey] = useState<(keyof T & string) | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Pagination state
+  const [page, setPage] = useState(0);
 
   // Selection state (track by index for identity)
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
@@ -66,6 +73,15 @@ export function DataTable<T extends Record<string, unknown>>({
     const dir = sortDir === "asc" ? 1 : -1;
     return [...data].sort((a, b) => dir * defaultCompare(a, b, sortKey));
   }, [data, sortKey, sortDir]);
+
+  // Paginated data
+  const totalPages = pageSize ? Math.ceil(sortedData.length / pageSize) : 1;
+  const displayData = pageSize
+    ? sortedData.slice(page * pageSize, (page + 1) * pageSize)
+    : sortedData;
+
+  // Reset page when data or sort changes
+  useMemo(() => setPage(0), [data, sortKey, sortDir]);
 
   // Handle header click
   const handleSort = useCallback(
@@ -209,7 +225,7 @@ export function DataTable<T extends Record<string, unknown>>({
           </thead>
 
           <tbody className="divide-y divide-gray-100 bg-white">
-            {sortedData.length === 0 ? (
+            {displayData.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
@@ -219,47 +235,77 @@ export function DataTable<T extends Record<string, unknown>>({
                 </td>
               </tr>
             ) : (
-              sortedData.map((row, idx) => (
-                <tr
-                  key={idx}
-                  onClick={() => onRowClick?.(row)}
-                  className={`
-                    ${onRowClick ? "cursor-pointer" : ""}
-                    ${selectedIndices.has(idx) ? "bg-blue-50" : "hover:bg-gray-50"}
-                    transition-colors
-                  `}
-                >
-                  {selectable && (
-                    <td className="w-10 px-3 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIndices.has(idx)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          toggleRow(idx);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        aria-label={`Select row ${idx + 1}`}
-                      />
-                    </td>
-                  )}
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
-                      className="whitespace-nowrap px-4 py-3 text-sm text-gray-700"
-                    >
-                      {col.render
-                        ? col.render(row[col.key], row)
-                        : String(row[col.key] ?? "")}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              displayData.map((row, idx) => {
+                const globalIdx = pageSize ? page * pageSize + idx : idx;
+                return (
+                  <tr
+                    key={globalIdx}
+                    onClick={() => onRowClick?.(row)}
+                    className={`
+                      ${onRowClick ? "cursor-pointer" : ""}
+                      ${highlightRow?.(row) ? "bg-blue-100" : selectedIndices.has(globalIdx) ? "bg-blue-50" : "hover:bg-gray-50"}
+                      transition-colors
+                    `}
+                  >
+                    {selectable && (
+                      <td className="w-10 px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIndices.has(globalIdx)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleRow(globalIdx);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          aria-label={`Select row ${globalIdx + 1}`}
+                        />
+                      </td>
+                    )}
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className="whitespace-nowrap px-4 py-3 text-sm text-gray-700"
+                      >
+                        {col.render
+                          ? col.render(row[col.key], row)
+                          : String(row[col.key] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {pageSize && totalPages > 1 && (
+        <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
+          <span>
+            Page {page + 1} of {totalPages}
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-40"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

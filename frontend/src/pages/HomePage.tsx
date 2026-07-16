@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FileUploadDropzone } from "../components/upload/FileUploadDropzone";
 import { DataTable, type Column } from "../components/tables/DataTable";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -99,9 +99,7 @@ export function HomePage() {
     useHeaderSets();
   const saveHeaderSetsMutation = useSaveHeaderSets();
 
-  const [headerSets, setHeaderSets] = useState<
-    [ColumnHeaderSet, ColumnHeaderSet, ColumnHeaderSet]
-  >([
+  const [headerSets, setHeaderSets] = useState<ColumnHeaderSet[]>([
     { ...BYONIC_HEADER_SET },
     { ...MSFRAGGER_HEADER_SET },
     { ...CUSTOM_HEADER_SET },
@@ -110,43 +108,15 @@ export function HomePage() {
 
   // Sync from backend when data arrives
   useEffect(() => {
-    if (!remoteHeaderSets) return;
-    const defaults: Record<string, ColumnHeaderSet> = {
-      Customized: CUSTOM_HEADER_SET,
-      Byonic: BYONIC_HEADER_SET,
-      MSFragger: MSFRAGGER_HEADER_SET,
-    };
-    const merge = (
-      stored: ColumnHeaderSet | undefined,
-      fallback: ColumnHeaderSet,
-    ): ColumnHeaderSet => ({
-      ...fallback,
-      ...(stored ?? {}),
-    });
-    const custom = merge(
-      remoteHeaderSets.find((h) => h.name === "Customized"),
-      defaults["Customized"],
-    );
-    const byonic = merge(
-      remoteHeaderSets.find((h) => h.name === "Byonic"),
-      defaults["Byonic"],
-    );
-    const msfragger = merge(
-      remoteHeaderSets.find((h) => h.name === "MSFragger"),
-      defaults["MSFragger"],
-    );
-    setHeaderSets([byonic, msfragger, custom]);
+    if (!remoteHeaderSets || remoteHeaderSets.length === 0) return;
+    setHeaderSets(remoteHeaderSets);
     setHeaderSetsSaved(true);
   }, [remoteHeaderSets]);
 
   const updateHeaderField = useCallback(
-    (setIndex: 0 | 1 | 2, field: keyof ColumnHeaderSet, value: string) => {
+    (setIndex: number, field: keyof ColumnHeaderSet, value: string) => {
       setHeaderSets((prev) => {
-        const copy: [ColumnHeaderSet, ColumnHeaderSet, ColumnHeaderSet] = [
-          { ...prev[0] },
-          { ...prev[1] },
-          { ...prev[2] },
-        ];
+        const copy = prev.map((hs) => ({ ...hs }));
         (copy[setIndex] as Record<string, string>)[field] = value;
         return copy;
       });
@@ -231,7 +201,7 @@ export function HomePage() {
               const suffix = val.slice(1).trimStart();
               return allHeaders.some((h) => h.endsWith(suffix));
             } else {
-              const prefix = val.replace(/\*+$/, "").trimEnd();
+              const prefix = val.replace(/\*+$/, "");
               return allHeaders.some((h) => h.startsWith(prefix));
             }
           })();
@@ -301,10 +271,11 @@ export function HomePage() {
       // Default analysis name to the file name (without extension)
       const baseName = file.name.replace(/\.[^/.]+$/, "");
       setAnalysisName(baseName);
-      // Initialise every column with an empty condition
+      // Initialise conditions — default to "1" if only one column
       const initial: Record<string, string> = {};
+      const defaultVal = result.columns.length === 1 ? "1" : "";
       result.columns.forEach((col) => {
-        initial[col] = "";
+        initial[col] = defaultVal;
       });
       setConditions(initial);
     },
@@ -494,15 +465,11 @@ export function HomePage() {
                   <th className="px-4 py-2 text-left font-semibold text-gray-600">
                     Purpose
                   </th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600">
-                    Byonic
-                  </th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600">
-                    MSFragger
-                  </th>
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600">
-                    Customized
-                  </th>
+                  {headerSets.map((hs) => (
+                    <th key={hs.name} className="px-4 py-2 text-left font-semibold text-gray-600">
+                      {hs.name}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -579,11 +546,11 @@ export function HomePage() {
                         </span>
                       )}
                     </td>
-                    {([0, 1, 2] as const).map((idx) => (
-                      <td key={idx} className="px-4 py-1">
+                    {headerSets.map((hs, idx) => (
+                      <td key={hs.name} className="px-4 py-1">
                         <input
                           type="text"
-                          value={headerSets[idx][field]}
+                          value={hs[field]}
                           onChange={(e) =>
                             updateHeaderField(idx, field, e.target.value)
                           }
@@ -614,7 +581,7 @@ export function HomePage() {
                 ).map(([label, field]) => (
                   <tr key={field}>
                     <td
-                      className={`px-4 py-2 text-xs ${field === "abundance_columns" ? "font-semibold text-gray-700" : "text-gray-500"}`}
+                      className="px-4 py-2 text-xs text-gray-500"
                     >
                       {label}
                       {field === "engine_score_prefix" && (
@@ -648,6 +615,10 @@ export function HomePage() {
                         <span className="group relative ml-1 inline-flex cursor-help items-center rounded-full bg-gray-200 px-1 text-[10px] font-bold text-gray-500">
                           ?
                           <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-1 hidden -translate-y-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[11px] font-normal text-white shadow-lg group-hover:block">
+                            Optional. When empty, a placeholder column with
+                            value 1 is added for all rows.
+                            <br />
+                            <br />
                             Use * as wildcard.
                             <br />
                             Abundances (Grouped)* = prefix match
@@ -659,11 +630,11 @@ export function HomePage() {
                         </span>
                       )}
                     </td>
-                    {([0, 1, 2] as const).map((idx) => (
-                      <td key={idx} className="px-4 py-1">
+                    {headerSets.map((hs, idx) => (
+                      <td key={hs.name} className="px-4 py-1">
                         <input
                           type="text"
-                          value={headerSets[idx][field]}
+                          value={hs[field]}
                           onChange={(e) =>
                             updateHeaderField(idx, field, e.target.value)
                           }
@@ -1038,9 +1009,19 @@ export function HomePage() {
 
       {/* ─── Section 5: Saved Analyses Table ──────────────────────────────── */}
       <section className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">
-          Saved Analyses
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Saved Analyses
+          </h2>
+          {analysisRows.length >= 2 && (
+            <Link
+              to="/compare"
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              Compare Two Analyses
+            </Link>
+          )}
+        </div>
 
         {isLoadingAnalyses ? (
           <LoadingSpinner message="Loading analyses…" />

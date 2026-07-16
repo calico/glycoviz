@@ -43,6 +43,31 @@ npm install
 npm run dev
 ```
 
+## Running Tests
+
+```bash
+cd backend
+pip install -e ".[dev]"
+
+# Run all tests
+python -m pytest tests/ -v
+
+# Run only unit tests
+python -m pytest tests/test_statistics.py tests/test_glycan_lookup.py tests/test_glycan_validator.py tests/test_foldchange.py -v
+
+# Run only API/integration tests
+python -m pytest tests/test_api/ -v
+```
+
+## API Documentation
+
+The backend exposes a REST API that powers all frontend functionality. Any operation available in the UI can also be performed programmatically via HTTP requests.
+
+Interactive API documentation is available when the backend is running:
+
+- **With Docker Compose:** http://localhost:5173/api/docs or http://localhost:8000/docs, depending on proxy settings
+- **Manual development:** http://localhost:8000/docs (Swagger UI) or http://localhost:8000/redoc
+
 ## Project Structure
 
 ```

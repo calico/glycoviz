@@ -190,9 +190,9 @@ async def get_glycan_sites(
         # Track max position for protein length scaling
         if idx_position is not None and row[idx_position]:
             try:
-                pos = int(row[idx_position])
+                pos = int(float(row[idx_position]))
                 max_site_pos = max(max_site_pos, pos)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
         else:
             # Try to extract from site_info (e.g. "P28665---N313---Mug1" → 313)

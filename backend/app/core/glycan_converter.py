@@ -54,7 +54,7 @@ __all__ = [
 
 from app.core.glycan_lookup import composition_to_mass
 
-from app.core.glycan_validator import get_peplength_from_sequence
+from app.core.glycan_validator import clean_sequence, get_peplength_from_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ def run_analysis(
     AnalysisResult
         Paths to the generated files together with summary statistics.
     """
-    filepath = _maybe_convert_single_protein_csv(filepath)
+    # single_protein CSV no longer needs xlsx conversion — CSV is now native
     print(f"[DEBUG] run_analysis called with filepath={filepath}")
     print(f"[DEBUG] filters={filters}")
     print(f"[DEBUG] conditions={conditions}")
@@ -158,15 +158,12 @@ def run_analysis(
     proportion_file = f"uploads/proportions_table_{file_id}.csv"
     condition_map_file = "uploads/conditions_biological_replicates_map.csv"
 
-    # ---- open the workbook ------------------------------------------------
-    wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb.active
-    if ws is None:
-        wb.close()
-        raise ValueError(f"Workbook at '{filepath}' has no active sheet")
+    # ---- open the input file ------------------------------------------------
+    _input_fh = open(filepath, newline="", encoding="utf-8")
+    _csv_reader = csv.reader(_input_fh)
 
     try:
-        header_row = _read_header_row(ws)
+        header_row = [str(cell) if cell else "" for cell in next(_csv_reader)]
         print(f"[DEBUG] header_row has {len(header_row)} columns")
         print(f"[DEBUG] first 10 headers: {header_row[:10]}")
 
@@ -268,13 +265,26 @@ def run_analysis(
         rows_skipped_parse_error = 0
 
         # ---- iterate over data rows ---------------------------------------
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for row in _csv_reader:
             row_values = list(row)
             total_rows_scanned += 1
 
+            # --- clean sequence in-place (strip modifications and flanking residues)
+            if col_idx.peptide < len(row_values):
+                row_values[col_idx.peptide] = clean_sequence(
+                    str(row_values[col_idx.peptide])
+                )
+
+            # --- clean protein accession (keep first token, strip leading ">")
+            if col_idx.protein < len(row_values):
+                acc = str(row_values[col_idx.protein] or "").lstrip(">")
+                if " " in acc:
+                    acc = acc.split()[0]
+                row_values[col_idx.protein] = acc
+
             # --- apply QC filters ------------------------------------------
             try:
-                peplength_val = get_peplength_from_sequence(row_values[col_idx.peptide])
+                peplength_val = len(row_values[col_idx.peptide])
                 fdr2d_val = float(row_values[col_idx.fdr2d])
                 if filters.fdr_is_probability:
                     fdr2d_val = 1.0 - fdr2d_val
@@ -300,7 +310,7 @@ def run_analysis(
             # Min-count filter: how many abundance columns have a positive value?
             count_of_peaks = 0
             for c in col_idx.abundance_indices:
-                abd_str = str(row_values[c]) if row_values[c] is not None else ""
+                abd_str = str(row_values[c]) if c < len(row_values) and row_values[c] else ""
                 if abd_str and float(abd_str) > 0:
                     count_of_peaks += 1
             if count_of_peaks < filters.mincount_threshold:
@@ -423,7 +433,7 @@ def run_analysis(
                 result_row_number += 1
 
     finally:
-        wb.close()
+        _input_fh.close()
 
     print(f"[DEBUG] === Row processing summary ===")
     print(f"[DEBUG] Total rows scanned: {total_rows_scanned}")

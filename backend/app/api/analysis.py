@@ -60,6 +60,21 @@ async def run_analysis(params: AnalysisCreate, db: AsyncSession = Depends(get_db
     # Build the conditions list from the conditions dict (column_name -> condition_label)
     conditions = list(params.conditions.values())
 
+    # Ensure required columns exist before running analysis
+    from app.core.excel_reader import ensure_glycan_composition, ensure_placeholder_columns, ensure_abundance_column
+    try:
+        ensure_glycan_composition(filepath)
+    except Exception:
+        pass
+    try:
+        ensure_placeholder_columns(filepath)
+    except Exception:
+        pass
+    try:
+        ensure_abundance_column(filepath)
+    except Exception:
+        pass
+
     # Run the core analysis (CPU-bound, but kept simple for now)
     try:
         result = core_run_analysis(filepath, filters, conditions)
@@ -287,6 +302,9 @@ async def get_protein_abundance(
     mode: str = "glycan",
     metric: str = "abundance",
     site: str | None = None,
+    w_depth: float | None = None,
+    w_conflict: float | None = None,
+    w_byonic: float | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Return per-protein abundance data filtered by accession and optionally by site.
@@ -422,6 +440,27 @@ async def get_protein_abundance(
                     except ValueError:
                         pass
 
+    # Recompute composite scores in-memory when custom weights are provided
+    recompute = w_depth is not None and w_conflict is not None and w_byonic is not None
+    if recompute:
+        w_sum = w_depth + w_conflict + w_byonic
+        for scores_dict in [all_glycan_to_scores, *(seq_glycan_to_scores.values())]:
+            for glycan_scores in scores_dict.values():
+                d_list = glycan_scores.get("depth", [])
+                c_list = glycan_scores.get("rt_conflict", [])
+                e_list = glycan_scores.get("engine_score", [])
+                n = max(len(d_list), len(c_list), len(e_list))
+                if n == 0:
+                    continue
+                recomputed = []
+                for i in range(n):
+                    d = d_list[i] if i < len(d_list) else 0.5
+                    c = c_list[i] if i < len(c_list) else 0.5
+                    e = e_list[i] if i < len(e_list) else 0.5
+                    raw = w_depth * d + w_conflict * c + w_byonic * e
+                    recomputed.append(raw / w_sum if w_sum > 0 else 0.0)
+                glycan_scores["composite"] = recomputed
+
     # Build per-sequence response sorted by number of glycans (most data first)
     ranked_keys = sorted(
         seq_glycan_to_values.keys(),
@@ -462,6 +501,9 @@ async def get_multi_site_abundance(
     body: dict,
     mode: str = "glycan",
     metric: str = "abundance",
+    w_depth: float | None = None,
+    w_conflict: float | None = None,
+    w_byonic: float | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Return aggregated abundance for multiple accession+site pairs."""
@@ -568,6 +610,26 @@ async def get_multi_site_abundance(
                         glycan_to_scores[glycan_name][key].append(float(row[idx]))
                     except ValueError:
                         pass
+
+    # Recompute composite scores in-memory when custom weights are provided
+    recompute = w_depth is not None and w_conflict is not None and w_byonic is not None
+    if recompute:
+        w_sum = w_depth + w_conflict + w_byonic
+        for glycan_scores in glycan_to_scores.values():
+            d_list = glycan_scores.get("depth", [])
+            c_list = glycan_scores.get("rt_conflict", [])
+            e_list = glycan_scores.get("engine_score", [])
+            n = max(len(d_list), len(c_list), len(e_list))
+            if n == 0:
+                continue
+            recomputed = []
+            for i in range(n):
+                d = d_list[i] if i < len(d_list) else 0.5
+                c = c_list[i] if i < len(c_list) else 0.5
+                e = e_list[i] if i < len(e_list) else 0.5
+                raw = w_depth * d + w_conflict * c + w_byonic * e
+                recomputed.append(raw / w_sum if w_sum > 0 else 0.0)
+            glycan_scores["composite"] = recomputed
 
     return {
         "data": dict(glycan_to_values),

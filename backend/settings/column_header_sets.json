@@ -1,21 +1,6 @@
 [
   {
-    "name": "Byonic",
-    "glycan_composition": "Glycan Composition",
-    "protein_accessions": "Protein Accessions",
-    "position_in_protein": "Position in Protein",
-    "master_protein_descriptions": "Master Protein Descriptions",
-    "sequence": "Sequence",
-    "modifications": "Modifications (all possible sites)",
-    "modifications_fallback": "Modifications",
-    "retention_time": "Top Apex RT [min]",
-    "fdr_prefix": "FDR 2D (by Search Engine)",
-    "engine_score_prefix": "Byonic Score (",
-    "ppm_prefix": "DeltaM [ppm] ",
-    "abundance_columns": "Abundances (Grouped)*"
-  },
-  {
-    "name": "MSFragger",
+    "name": "MSFragger-psm",
     "glycan_composition": "",
     "protein_accessions": "Protein",
     "position_in_protein": "Protein Start",
@@ -30,7 +15,7 @@
     "abundance_columns": "Intensity"
   },
   {
-    "name": "Customized",
+    "name": "MSFragger-combinedions",
     "glycan_composition": "",
     "protein_accessions": "Protein",
     "position_in_protein": "Start",
@@ -43,5 +28,50 @@
     "engine_score_prefix": "",
     "ppm_prefix": "",
     "abundance_columns": "*_1 Intensity"
+  },
+  {
+    "name": "Byonic-pd",
+    "glycan_composition": "Glycan Composition",
+    "protein_accessions": "Protein Accessions",
+    "position_in_protein": "Position in Protein",
+    "master_protein_descriptions": "Master Protein Descriptions",
+    "sequence": "Sequence",
+    "modifications": "Modifications (all possible sites)",
+    "modifications_fallback": "Modifications",
+    "retention_time": "Top Apex RT [min]",
+    "fdr_prefix": "FDR 2D (by Search Engine)",
+    "engine_score_prefix": "Byonic Score (",
+    "ppm_prefix": "DeltaM [ppm] ",
+    "abundance_columns": "Abundances (Grouped)*"
+  },
+  {
+    "name": "Byonic-standalone",
+    "glycan_composition": "CompositionList",
+    "protein_accessions": "ProteinName",
+    "position_in_protein": "",
+    "master_protein_descriptions": "ProteinName",
+    "sequence": "Sequence",
+    "modifications": "VariableFinalModNameList",
+    "modifications_fallback": "Modifications",
+    "retention_time": "ScanTimeList",
+    "fdr_prefix": "PosteriorErrorProbability1_sum",
+    "engine_score_prefix": "Score",
+    "ppm_prefix": "MassErrPPM",
+    "abundance_columns": ""
+  },
+  {
+    "name": "Customized",
+    "glycan_composition": "Glycans NHFAGNa",
+    "protein_accessions": "Protein Name",
+    "position_in_protein": "",
+    "master_protein_descriptions": "Protein Name",
+    "sequence": "Peptide < ProteinMetrics Confidential >",
+    "modifications": "Glycans NHFAGNa",
+    "modifications_fallback": "Modifications",
+    "retention_time": "Scan Time",
+    "fdr_prefix": "",
+    "engine_score_prefix": "Score",
+    "ppm_prefix": "Mass error (ppm)",
+    "abundance_columns": ""
   }
 ]
