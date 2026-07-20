@@ -12,7 +12,7 @@
 No manual configuration is required for local installation above. 
 
 The following shows the Docker Compose command and expected output in a terminal:
-![docker_command.png](images/docker_command.png)
+<p><img src="images/docker_command.png" alt="Docker Compose Command" width="50%"></p>
 
 **Hosting as a shared server:** GlycoViz can also be deployed on a shared server so that multiple users can access it through a web browser without installing anything locally. Deploy the same Docker Compose setup on a server machine, and users can access the application by navigating to the server's IP address or hostname (e.g., `http://your-server:5173`). The application runs on FastAPI, an asynchronous web framework, so a single instance should comfortably support dozens of concurrent users for analyzing and reviewing results. For production deployments, consider placing a reverse proxy (e.g., nginx) in front of the application to handle HTTPS and domain routing. On multi-core servers, the backend can be configured with multiple worker processes to run analyses in parallel.
 
