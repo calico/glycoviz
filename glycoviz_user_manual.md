@@ -1,5 +1,7 @@
 # GlycoViz User Manual
 
+**Version 1.0.1** | July 2026
+
 ## Installation
 
 1. Install Docker Compose on your machine: https://docs.docker.com/compose/install/
@@ -279,7 +281,7 @@ Example column mapping:
 ### Example 5 — Byonic Standalone
 For Byonic standalone (without Proteome Discoverer), open the .byrslt file in Byonic Viewer (screenshot from v6.0.33), select all proteins, then right-click the Peptides table and export as unformatted
 CSV.
-![Byonic Standalone Export](images/byonic_standalone_export.png)
+<p><img src="images/byonic_standalone_export.png" alt="Byonic Standalone Export" width="50%"></p>
 
 Example public file: `ITA2_0221_0214_MK_WT_2X_R163t165_Enr_3p0_27_32v_120min.raw_1_.byrslt`
 Source: https://www.ebi.ac.uk/pride/archive/projects/PXD030550
