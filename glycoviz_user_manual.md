@@ -4,7 +4,7 @@
 
 ## Installation
 
-1. Install Docker Compose on your machine: https://docs.docker.com/compose/install/
+1. Install Docker Desktop on your machine: https://docs.docker.com/compose/install/. Docker is a platform that packages applications and all their dependencies into containers, ensuring the software runs consistently on any machine regardless of operating system or local configuration.
 2. Download GlycoViz code from https://github.com/calico/glycoviz. The code can be downloaded by clicking "Code -> Download ZIP" or clicking the "Releases" section. 
 3. Open a terminal, navigate to the downloaded `glycoviz` directory (e.g., `cd glycoviz`), and run the command `docker-compose up`. 
 4. The web app should be accessible from http://localhost:5173
@@ -13,6 +13,11 @@ No manual configuration is required for local installation above.
 
 The following shows the Docker Compose command and expected output in a terminal:
 <p><img src="images/docker_command.png" alt="Docker Compose Command" width="50%"></p>
+
+**Troubleshooting:**
+- **Windows — virtualization required:** Docker Desktop on Windows requires hardware virtualization to be enabled. If Docker fails to start, follow the instructions at https://support.microsoft.com/en-us/windows/experience/enable-virtualization-on-windows to enable it or refers to docker tutorial videos like https://www.youtube.com/watch?v=740YJZZu7QY. A restart is usually required after installation. 
+- **Port conflicts:** If port 5173 is already in use, Docker will fail to start. Stop any other services using that port, or modify the port mapping in `docker-compose.yml`.
+- **First run is slow:** The initial `docker-compose up` downloads Docker images and installs dependencies, which may take several minutes. Subsequent starts are much faster.
 
 **Hosting as a shared server:** GlycoViz can also be deployed on a shared server so that multiple users can access it through a web browser without installing anything locally. Deploy the same Docker Compose setup on a server machine, and users can access the application by navigating to the server's IP address or hostname (e.g., `http://your-server:5173`). The application runs on FastAPI, an asynchronous web framework, so a single instance should comfortably support dozens of concurrent users for analyzing and reviewing results. For production deployments, consider placing a reverse proxy (e.g., nginx) in front of the application to handle HTTPS and domain routing. On multi-core servers, the backend can be configured with multiple worker processes to run analyses in parallel.
 
