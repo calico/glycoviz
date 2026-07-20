@@ -4,18 +4,18 @@ Glycan analysis application with build-in glycan validation algorithm  using Rea
 ![img.png](img.png)
 
 # User Guide #
-Please find the full user guide at [glycoviz_manual.md](glycoviz_manual.md). Key sections:
+Please find the full user guide at [glycoviz_user_manual.md](glycoviz_user_manual.md). Key sections:
 
-- [Installation](glycoviz_manual.md#installation)
-- [Data Upload and Configuration](glycoviz_manual.md#1-data-upload-and-configuration)
-- [Analysis Results](glycoviz_manual.md#2-analysis-results)
-- [Site-Level Exploration](glycoviz_manual.md#3-site-level-exploration)
-- [Heatmap and Clustering](glycoviz_manual.md#4-heatmap-and-clustering)
-- [Protein Glycosylation Map](glycoviz_manual.md#5-protein-glycosylation-map)
-- [Managing Analyses](glycoviz_manual.md#6-managing-analyses)
-- [Compare Two Analyses](glycoviz_manual.md#7-compare-two-analyses)
-- [Input Examples](glycoviz_manual.md#input-examples)
-- [API Access](glycoviz_manual.md#api-access)
+- [Installation](glycoviz_user_manual.md#installation)
+- [Data Upload and Configuration](glycoviz_user_manual.md#1-data-upload-and-configuration)
+- [Analysis Results](glycoviz_user_manual.md#2-analysis-results)
+- [Site-Level Exploration](glycoviz_user_manual.md#3-site-level-exploration)
+- [Heatmap and Clustering](glycoviz_user_manual.md#4-heatmap-and-clustering)
+- [Protein Glycosylation Map](glycoviz_user_manual.md#5-protein-glycosylation-map)
+- [Managing Analyses](glycoviz_user_manual.md#6-managing-analyses)
+- [Compare Two Analyses](glycoviz_user_manual.md#7-compare-two-analyses)
+- [Input Examples](glycoviz_user_manual.md#input-examples)
+- [API Access](glycoviz_user_manual.md#api-access)
 
 ## Architecture
 

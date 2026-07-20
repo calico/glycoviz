@@ -3,23 +3,20 @@
 ## Installation
 
 1. Install Docker Compose on your machine: https://docs.docker.com/compose/install/
-2. Download GlycoViz code from https://github.com/calico/glycoviz. The code can be download by clicking "Code -> Download ZIP" or click "releases" sections. 
-3. Open a terminal, navigate to the downloaded `glycoviz` directory (e.g., `cd glycoviz`), run the command `docker-compose up`. 
+2. Download GlycoViz code from https://github.com/calico/glycoviz. The code can be downloaded by clicking "Code -> Download ZIP" or clicking the "Releases" section. 
+3. Open a terminal, navigate to the downloaded `glycoviz` directory (e.g., `cd glycoviz`), and run the command `docker-compose up`. 
 4. The web app should be accessible from http://localhost:5173
 
 No manual configuration is required for local installation above. 
+
+The following shows the Docker Compose command and expected output in a terminal:
+![docker_command.png](images/docker_command.png)
 
 **Hosting as a shared server:** GlycoViz can also be deployed on a shared server so that multiple users can access it through a web browser without installing anything locally. Deploy the same Docker Compose setup on a server machine, and users can access the application by navigating to the server's IP address or hostname (e.g., `http://your-server:5173`). The application runs on FastAPI, an asynchronous web framework, so a single instance should comfortably support dozens of concurrent users for analyzing and reviewing results. For production deployments, consider placing a reverse proxy (e.g., nginx) in front of the application to handle HTTPS and domain routing. On multi-core servers, the backend can be configured with multiple worker processes to run analyses in parallel.
 
 ## API Access
 
 The application is built on a REST API (FastAPI) that powers all frontend functionality. Any operation available in the UI — uploading data, running analyses, retrieving abundance data, computing fold changes — can also be performed programmatically via HTTP requests. The interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` when the backend server is running, e.g. for a local instance, the API docs are at http://localhost:5173/api/docs or http://localhost:8000/docs, depending on proxy settings.
-
----
-
-## Manual
-
-The workflow consists of three stages: (1) configure and upload, (2) run analysis, and (3) explore results.
 
 ---
 
@@ -31,27 +28,39 @@ For detailed examples of how to export data from different search engines and co
 
 ---
 
+## Load Data
+
+The layout of homepage is shown below. The workflow consists of three stages: (1) configure and upload, (2) run analysis, and (3) explore results.
+
+![Home Page](images/homepage.png)
+
+---
+
 ## 1. Data Upload and Configuration
 
-### 1.1 Uploading a Data File
-
-From the home page, drag and drop a search engine results file into the upload zone, or click to browse. Supported formats include `.xlsx`, `.tsv`, and `.csv`. GlycoViz automatically detects the search engine format (Byonic, MSFragger, or your customized headers) by matching column headers against the configured header sets. The detected format is displayed below the upload zone. All input file headers can be self-defined in the UI.
-
-### 1.2 Column Header Settings
-
-The Column Settings table defines how GlycoViz maps your file's column headers to internal field names. Multiple presets are provided:
+### 1.1 Column Header Settings
+Input files from different search engines or versions use different column headers.
+Click the **"Column Settings"** button on the home page to configure how GlycoViz maps your file's column headers to its internal field names. Multiple editable presets are provided:
 
 - **Byonic-pd** — default mapping for Byonic search results exported from Proteome Discoverer
-- **Byonic-standalone** — mapping for Byonic standalone `.byrslt` exports
+- **Byonic-standalone** — mapping for Byonic standalone `.byrslt` file peptide CSV exports
 - **MSFragger-psm** — mapping for MSFragger/FragPipe PSM output
 - **MSFragger-combinedions** — mapping for MSFragger combined ion output
 - **Customized** — a user-editable template for other search engines
 
-Each row corresponds to a required field. Required fields are bold in the table. See tooltips in the UI for instructions. The Abundance Columns field supports `*` wildcards to match multiple samples. When the Abundance Columns field is left empty, a placeholder column with value 1 is added for all rows, enabling identification-only datasets to be processed.
+Each row corresponds to a field in your input file. Required fields are bold in the table. See tooltips in the UI for instructions. The Abundance Columns field supports `*` wildcards to match multiple samples. When the Abundance Columns field is left empty, a placeholder column with value 1 is added for all rows, enabling identification-only datasets to be processed. 
 
-Several example data files from Byonic and MSFragger are provided which can be downloaded from the link in the screenshot below.
+The image below shows a file matched to the "Byonic-pd" settings (e.g. the glycan header is "Glycan Composition"). Several example data files from Byonic and MSFragger are provided which can be downloaded from the link in homepage. Also see the [Input Examples](#input-examples) section at the end of this manual for example input and column mappings. 
 
 ![Column Settings and Upload](images/column_settings_upload.png)
+
+### 1.2 Uploading a Data File
+
+From the home page, drag and drop a search engine results file into the upload zone, or click to browse. Supported formats include `.xlsx`, `.tsv`, and `.csv`. GlycoViz automatically detects the search engine format (Byonic, MSFragger, or your customized headers) by matching column headers against the configured header sets. The detected format is displayed below the upload zone. All input file headers can be self-defined in the UI.
+
+If the input file headers match a configured header set, the detected format is displayed automatically below the upload zone. Otherwise, an error message is shown indicating which columns are missing, prompting the user to adjust the header settings.
+![uploadsuccess](images/upload_success.png)
+![upload_failed.png](images/upload_failed.png)
 
 ### 1.3 Condition Assignment and Analysis Parameters
 
@@ -63,7 +72,12 @@ If the dataset contains only a single condition, the volcano plot and heatmap wi
 - For each glycan row, it counts how many abundance columns have a positive value (i.e., how many samples detected that glycan).
 - If that count is less than the threshold, the row is skipped/excluded from the analysis.
 
-![Condition Assignment and Filter Settings](images/condition_assignment_and_filters.png)
+**FDR Threshold** filters rows where the FDR column (mapped from "FDR Prefix" in header settings) exceeds the specified value. When "use Probability" is checked, the value is converted via `1 - value` before comparison.
+
+**Export filter** controls whether non-glycosylated peptides are included in the exported results CSV. Downstream analysis and visualizations are not affected.
+
+**Composite Score Weights** control the relative importance of three validation metrics — Depth, RT Conflict, and Engine Score — in the composite validation score. Weights are normalized so the composite score stays on a 0-1 scale. Set a weight to 0 to exclude that metric.  These weights can also be adjusted in real time on the analysis review page without re-running the analysis.
+  ![Condition Assignment and Filter Settings](images/condition_assignment_and_filters.png)
 
 ---
 
@@ -87,10 +101,12 @@ Two bar charts display glycan or motif abundance across all sites:
 - **By Condition** — samples are grouped by condition, showing mean +/- standard error
 
 ![Analysis Results](images/analysis_results.png)
+The image below shows the same data as motifs:
+![analysis_results_motif.png](images/analysis_results_motif.png)
 
 ### 2.3 Volcano Plot and Fold Change Analysis
 
-This plot is only available if there are more than 1 condition defined when uploading the file. Select a reference and comparison condition to generate:
+This plot is only available if there is more than one condition defined when uploading the file. Select a reference and comparison condition (from the controls in image above) to generate:
 
 ![Volcano Plot](images/volcano_plot.png)
 
@@ -116,13 +132,15 @@ The detailed scoring matrix is available when hovering on a data point.
 
 ## 4. Heatmap and Clustering
 
-Click View Heatmap from the analysis page to open the clustering visualization. Configure clustering parameters:
+Click View Heatmap from the analysis page (image below) to open the clustering visualization. Configure clustering parameters:
 
 - **Cluster by:** rows, columns, or both
 - **Distance metric:** Euclidean, Manhattan, Maximum, or Minkowski
 - **Linkage method:** Complete, Single, or Average
 - **Transformations:** Centered Log Ratio (CLR), Z-score normalization, and fold change filtering (minimum threshold, default >= 4)
 - **K-Means:** optional k-means pre-clustering (k = 2-20)
+
+![viewheatmap_button.png](images/viewheatmap_button.png)
 
 Click Generate Heatmap to compute. The result displays an interactive heatmap with hierarchical dendrograms on rows and/or columns, using a cyan-black-yellow color scale centered at zero for log-ratio transforms.
 
@@ -154,7 +172,7 @@ The Saved Analyses table on the home page lists all completed analyses with name
 
 This page allows users to select two saved analyses (which could be from different search engines, different parameters, etc.) and perform a simple, table-based side-by-side comparison of global statistics, identified glycans, and glycosylation sites, though the comparison is less quantitative compared with the main analysis page.
 
-To compare results from two analyses, click the "Compare Two Analyses" link next to the "Saved Analyses" header on the home page.
+To compare results from two analyses, click the "Compare Two Analyses" link next to the "Saved Analyses" header on the home page (image above).
 
 On the comparison page, select two analyses from the dropdown menus and click "Compare." The page displays a side-by-side comparison of global statistics (proteins, peptides, glycopeptides, unique glycans, and sites) and a paginated glycosylation sites table showing the count of identifications from each analysis. Click any row in the sites table to view the glycans identified at that site in each analysis, displayed in a panel to the right. An optional "Identified Glycans" table can be toggled on to show all globally identified glycans across both analyses. All comparison tables support sorting and CSV export.
 
@@ -163,19 +181,11 @@ On the comparison page, select two analyses from the dropdown menus and click "C
 ---
 
 ## Input Examples
+GlycoViz is designed to not to be tied to a certain version or certain software. Users can modify the existing Byonic or MSFragger header mappings, or use the "Customized" profile to define column names for any search engine or software version. As long as several key columns — Protein Accessions, Modifications (or Glycan Composition, or even glycan masses alone), and Sequence — are available, the application can process the data. Below are some examples. Users should always check the column headers of their input file and adjust the mapping accordingly.
 
-### Example 1 — Byonic (Proteome Discoverer export)
-
-Export from Proteome Discoverer: File > Export > To Microsoft Excel, select "Peptide Groups" at Level 1.
-
-![Proteome Discoverer Export](images/pd_export.png)
-
-![Proteome Discoverer Export Dialog](images/pd_export_dialog.png)
-
-### Example 2 — MSFragger PSM (FragPipe v23)
-
-File: `example_input_msfragger_psm.tsv` — single PSM file.
-
+### Example 1— MSFragger PSM 
+The psm.tsv file can be found in nested folders in msfragger's result folder. ![msfragger.png](images/msfragger.png)
+Example file in homepage: `example_input_msfragger_psm.tsv` — single PSM file (FragPipe v23).
 Example column mapping:
 ```json
 {
@@ -194,9 +204,9 @@ Example column mapping:
 }
 ```
 
-### Example 3 — MSFragger Combined Ion (FragPipe v23)
-
-File: `example_input_msfragger_combined_ion.tsv` — with two samples. Intensity columns are "nistmab1_1 Intensity" and "nistmab2_1 Intensity".
+### Example 2 — MSFragger Combined Ion 
+The combined_ion.tsv file can be found in msfragger's result folder (image in Example 1).
+Example file in homepage: `example_input_msfragger_combined_ion.tsv`(FragPipe v23) — with two samples. Intensity columns are "nistmab1_1 Intensity" and "nistmab2_1 Intensity".
 
 Example column mapping using wildcard match `*_1 Intensity`:
 ```json
@@ -216,9 +226,8 @@ Example column mapping using wildcard match `*_1 Intensity`:
 }
 ```
 
-### Example 4 — MSFragger (FragPipe v24.0, public data)
-
-File: `713336_file03.tsv` from msfragger-glyco, FragPipe v24.0.
+### Example 3 — MSFragger (FragPipe v24.0, public data)
+This is a public psm data file with multiple samples. File: `713336_file03.tsv` from msfragger-glyco, FragPipe v24.0.
 Source: https://www.biorxiv.org/content/10.64898/2026.03.21.713336v1.supplementary-material
 
 One file with multiple samples. Intensity column headers for each sample are: `Intensity pool_1`, `Intensity A21`, `Intensity B21`, `Intensity C21`, etc.
@@ -241,16 +250,40 @@ Example column mapping using wildcard match `Intensity *`:
 }
 ```
 
+### Example 4 — Byonic (from Proteome Discoverer export)
+Byonic is commonly integrated as a search node within Thermo Proteome Discoverer. 
+Example file in homepage: `example_input_byonic.xlsx` -- exported from PD 2.4.0
+
+To export from Proteome Discoverer: File > Export > To Microsoft Excel, select "Peptide Groups" at Level 1.
+![Proteome Discoverer Export](images/pd_export.png)
+![Proteome Discoverer Export Dialog](images/pd_export_dialog.png)
+
+Example column mapping:
+```json
+{
+"glycan_composition": "Glycan Composition",
+"protein_accessions": "Protein Accessions",
+"position_in_protein": "Position in Protein",
+"master_protein_descriptions": "Master Protein Descriptions",
+"sequence": "Sequence",
+"modifications": "Modifications (all possible sites)",
+"modifications_fallback": "Modifications",
+"retention_time": "Top Apex RT [min]",
+"fdr_prefix": "FDR 2D (by Search Engine)",
+"engine_score_prefix": "Byonic Score (",
+"ppm_prefix": "DeltaM [ppm] ",
+"abundance_columns": "Abundances (Grouped)*"
+}
+```
+
 ### Example 5 — Byonic Standalone
-
-Open Byonic `.byrslt` file from Byonic Viewer (screenshot from v6.0.33), select all proteins, then right click Peptides table, export unformatted CSV.
-
+For Byonic standalone (without Proteome Discoverer), open the .byrslt file in Byonic Viewer (screenshot from v6.0.33), select all proteins, then right-click the Peptides table and export as unformatted
+CSV.
 ![Byonic Standalone Export](images/byonic_standalone_export.png)
 
+Example public file: `ITA2_0221_0214_MK_WT_2X_R163t165_Enr_3p0_27_32v_120min.raw_1_.byrslt`
 Source: https://www.ebi.ac.uk/pride/archive/projects/PXD030550
-File: `ITA2_0221_0214_MK_WT_2X_R163t165_Enr_3p0_27_32v_120min.raw_1_.byrslt`
-
-No intensity used.
+This file does not contain an intensity column, so GlycoViz uses spectral counts for quantification.
 
 Example column mapping:
 ```json
