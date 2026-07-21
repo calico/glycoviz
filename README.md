@@ -17,6 +17,8 @@ Please find the full user guide at [glycoviz_user_manual.md](glycoviz_user_manua
 - [Input Examples](glycoviz_user_manual.md#input-examples)
 - [API Access](glycoviz_user_manual.md#api-access)
 
+An example [video tutorial](https://github.com/calico/glycoviz/releases/download/v1.0.1/tutorial.mp4) is also available.
+
 ## Architecture
 
 - **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + react-plotly.js
