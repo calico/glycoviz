@@ -60,6 +60,10 @@ function FilterSummary({
     return <span className="text-gray-400 italic">No filters applied</span>;
   }
 
+  const labelMap: Record<string, string> = {
+    byonic_score: "engine score",
+    w_byonic: "w engine score",
+  };
   const items = Object.entries(params).filter(([, v]) => v != null && v !== "");
 
   return (
@@ -69,7 +73,7 @@ function FilterSummary({
           key={key}
           className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700"
         >
-          {key.replace(/_/g, " ")}: {String(value)}
+          {labelMap[key] ?? key.replace(/_/g, " ")}: {String(value)}
         </span>
       ))}
     </div>

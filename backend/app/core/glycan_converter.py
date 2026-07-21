@@ -182,6 +182,9 @@ def run_analysis(
 
         # ---- build extended header for the results CSV --------------------
         result_fields = list(header_row)
+        # Ensure the sequence column has the canonical name in the output
+        if col_idx.peptide < len(result_fields) and result_fields[col_idx.peptide] != "Sequence":
+            result_fields[col_idx.peptide] = "Sequence"
         result_fields += ["Protein---Position---Gene", "Converted Glycan Names"]
         result_fields += ["HexNAc", "Hex", "Fuc", "NeuAc", "NeuGc"]
 
