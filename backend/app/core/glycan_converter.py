@@ -831,6 +831,13 @@ def _resolve_with_header_sets(
         except ValueError as exc:
             errors.append(f"  [{hs.name or 'unnamed'}]: {exc}")
 
+    # Fallback: try canonical Byonic-pd headers (files are remapped to
+    # canonical names at upload time, so the original header set may not match)
+    try:
+        return _resolve_column_indices(header, abundance_type), BYONIC_HEADER_SET
+    except ValueError:
+        pass
+
     raise ValueError(
         "No column header set matched the file headers.\n" + "\n".join(errors)
     )
