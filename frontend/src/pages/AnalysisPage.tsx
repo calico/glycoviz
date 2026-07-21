@@ -247,7 +247,7 @@ export function AnalysisPage() {
 
   const proteinAbundance = useMemo(
     () =>
-      proteinAbundanceBySeq && selectedSequence
+      proteinAbundanceBySeq && selectedSequence !== undefined
         ? (proteinAbundanceBySeq[selectedSequence] ?? null)
         : null,
     [proteinAbundanceBySeq, selectedSequence],
