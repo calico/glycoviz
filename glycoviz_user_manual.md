@@ -73,7 +73,7 @@ If the input file headers match a configured header set, the detected format is 
 
 After uploading, GlycoViz displays the detected abundance columns. Assign each sample to a condition (e.g., "Control", "Treatment") and provide an analysis name. Adjust filters and click "Run Analysis" to begin processing.
 
-If the dataset contains only a single condition, the volcano plot and heatmap will not load because they rely on differential analysis between conditions.
+If the dataset contains only a single condition, the volcano plot and heatmap will not load since they rely on differential analysis between conditions.
 
 **Min Count Threshold** filters out glycans that don't appear in enough samples. Specifically:
 - For each glycan row, it counts how many abundance columns have a positive value (i.e., how many samples detected that glycan).
@@ -129,7 +129,7 @@ The left panel lists all identified glycosylation sites with gene name, protein 
 
 Selecting a single site shows two bar charts (by replicate and by condition) specific to that glycosylation site, with composite validation score coloring. Selecting multiple sites via checkboxes shows combined abundance charts aggregated across all selected sites. Clicking a protein accession link navigates to the protein glycosylation map.
 
-The detailed scoring matrix is available when hovering on a data point.
+The detailed scoring matrix is available when hovering over a data point.
 
 **Real-Time Composite Score Rescoring:** The composite validation score weights (Depth, RT Conflict, and Engine Score) can be recalculated using controls next to the "Glycosylation Sites" header. Changing these weights instantly recalculates the composite scores and updates the glycan label colors without modifying the saved analysis files. To ignore a metric entirely (e.g., RT Conflict), simply set its weight to 0 — the remaining weights are automatically normalized so the composite score stays on a 0-1 scale.
 
@@ -149,7 +149,7 @@ Click View Heatmap from the analysis page (image below) to open the clustering v
 
 ![viewheatmap_button.png](images/viewheatmap_button.png)
 
-Click Generate Heatmap to compute. The result displays an interactive heatmap with hierarchical dendrograms on rows and/or columns, using a cyan-black-yellow color scale centered at zero for log-ratio transforms.
+Click Generate Heatmap to compute. The result displays an interactive heatmap with hierarchical dendrograms on rows and/or columns, using a cyan-black-yellow color scale centered at zero for log-ratio transformations.
 
 ![Heatmap](images/heatmap.png)
 
@@ -177,7 +177,7 @@ The Saved Analyses table on the home page lists all completed analyses with name
 
 ## 7. Compare Two Analyses
 
-This page allows users to select two saved analyses (which could be from different search engines, different parameters, etc.) and perform a simple, table-based side-by-side comparison of global statistics, identified glycans, and glycosylation sites, though the comparison is less quantitative compared with the main analysis page.
+This page allows users to select two saved analyses (which could be from different search engines, different sets of parameters, etc.) and perform a simple, table-based side-by-side comparison of global statistics, identified glycans, and glycosylation sites; This comparison is less quantitative compared with the main analysis page.
 
 To compare results from two analyses, click the "Compare Two Analyses" link next to the "Saved Analyses" header on the home page (image above).
 
