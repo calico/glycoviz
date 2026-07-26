@@ -6,7 +6,7 @@
 
 1. Install Docker Desktop on your machine: https://docs.docker.com/compose/install/. Docker is a platform that packages applications and all their dependencies into containers, ensuring the software runs consistently on any machine regardless of operating system or local configuration.
 2. Download GlycoViz code from https://github.com/calico/glycoviz. The code can be downloaded by clicking "Code -> Download ZIP" or clicking the "Releases" section. 
-3. Open a terminal, navigate to the downloaded `glycoviz` directory (e.g., `cd glycoviz`), and run the command `docker-compose up`. 
+3. Open a terminal, navigate to the downloaded `glycoviz` directory (e.g., `cd glycoviz`), and run the command `docker-compose up`. On Windows, it is recommended to place the project inside the WSL2 Linux filesystem for best performance (see Troubleshooting below).
 4. The web app should be accessible from http://localhost:5173
 
 No manual configuration is required for local installation above. 
@@ -15,9 +15,10 @@ The following shows the Docker Compose command and expected output in a terminal
 <p><img src="images/docker_command.png" alt="Docker Compose Command" width="50%"></p>
 
 **Troubleshooting:**
-- **Windows — virtualization required:** Docker Desktop on Windows requires hardware virtualization to be enabled. If Docker fails to start, follow the instructions at https://support.microsoft.com/en-us/windows/experience/enable-virtualization-on-windows to enable it or refers to docker tutorial videos like https://www.youtube.com/watch?v=740YJZZu7QY. A restart is usually required after installation. 
+- **Windows — virtualization required:** Docker Desktop on Windows requires hardware virtualization to be enabled. If Docker fails to start, follow the instructions at https://support.microsoft.com/en-us/windows/experience/enable-virtualization-on-windows to enable it or refers to docker tutorial videos like https://www.youtube.com/watch?v=740YJZZu7QY. A restart is usually required after installation.
+- **Windows — slow Docker performance:** Docker containers on Windows run inside a Linux VM, so files stored on the Windows `C:` drive must cross a filesystem bridge on read/write, noticeable when processing large files. Almost all Docker Compose speed issues on Windows can be resolved by hosting the files inside the native WSL2 Linux filesystem instead. Open your terminal and type `wsl` to enter Linux, navigate to your home directory (`cd ~`), and clone the repository there (`git clone https://github.com/calico/glycoviz`), then run `docker compose up` from inside that directory.
 - **Port conflicts:** If port 5173 is already in use, Docker will fail to start. Stop any other services using that port, or modify the port mapping in `docker-compose.yml`.
-- **First run is slow:** The initial `docker-compose up` downloads Docker images and installs dependencies, which may take several minutes. Subsequent starts are much faster.
+- **First build is slow:** The initial `docker-compose up` downloads Docker images and installs dependencies, which may take several minutes. Subsequent starts are much faster.
 
 **Hosting as a shared server:** GlycoViz can also be deployed on a shared server so that multiple users can access it through a web browser without installing anything locally. Deploy the same Docker Compose setup on a server machine, and users can access the application by navigating to the server's IP address or hostname (e.g., `http://your-server:5173`). The application runs on FastAPI, an asynchronous web framework, so a single instance should comfortably support dozens of concurrent users for analyzing and reviewing results. For production deployments, consider placing a reverse proxy (e.g., nginx) in front of the application to handle HTTPS and domain routing. On multi-core servers, the backend can be configured with multiple worker processes to run analyses in parallel.
 
