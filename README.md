@@ -105,3 +105,8 @@ Interactive API documentation is available when the backend is running:
 │       └── types/     # TypeScript type definitions
 └── docker-compose.yml
 ```
+## Citation
+
+If you use the tool in your research, please cite:
+
+Wenzhou Li, Niclas Olsson, Fiona E McAllister. GlycoViz: A glycoproteomics tool for validating and visualizing glycopeptide identifications. *Bioinformatics* (2026).
